@@ -22,10 +22,16 @@ IO.on("connection", (socket) => {
   socket.on("makeCall", (data) => {
     let calleeId = data.calleeId;
     let sdpOffer = data.sdpOffer;
+    let name = data.name;
+    let lat = data.lat;
+    let long = data.long;
 
     socket.to(calleeId).emit("newCall", {
       callerId: socket.user,
       sdpOffer: sdpOffer,
+      name: name,
+      lat: lat,
+      long: long
     });
   });
 
