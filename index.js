@@ -1,6 +1,15 @@
-let port = process.env.PORT || 5000;
+const https = require("https");
+const fs = require("fs");
 
-let IO = require("socket.io")(port, {
+const options = {
+  key: fs.readFileSync("certs/private.key"), // Replace with the path to your private key
+  cert: fs.readFileSync("certs/certificate.crt"), // Replace with the path to your certificate
+};
+
+const port = process.env.PORT || 5000;
+
+const server = https.createServer(options);
+const IO = require("socket.io")(server, {
   cors: {
     origin: "*",
     methods: ["GET", "POST"],
@@ -31,7 +40,7 @@ IO.on("connection", (socket) => {
       sdpOffer: sdpOffer,
       name: name,
       lat: lat,
-      long: long
+      long: long,
     });
   });
 
@@ -54,4 +63,8 @@ IO.on("connection", (socket) => {
       iceCandidate: iceCandidate,
     });
   });
+});
+
+server.listen(port, () => {
+  console.log(`Server is running on port ${port}`);
 });
