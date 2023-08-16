@@ -1,4 +1,4 @@
-let port = process.env.PORT || 9232;
+let port = process.env.PORT || 5000;
 
 const admin = require("firebase-admin");
 const credentials = require("./hemaya-860b8-firebase-adminsdk-jv1xa-ee5d71199f.json");
