@@ -7,9 +7,11 @@ require("firebase/firestore");
 
 
 
-var db = firebase.initializeApp({
+ admin.initializeApp({
   credential: admin.credential.cert(credentials)
 });
+
+const db = admin.firestore()
 
 let IO = require("socket.io")(port, {
   cors: {
