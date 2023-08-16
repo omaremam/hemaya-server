@@ -1,4 +1,13 @@
-let port = process.env.PORT || 5000;
+let port = process.env.PORT || 9232;
+
+const admin = require("firebase-admin");
+const credentials = require("./hemaya-860b8-firebase-adminsdk-jv1xa-ee5d71199f.json");
+const firebase = require("firebase/app");
+require("firebase/firestore");
+
+
+
+var db = firebase.initializeApp(credentials);
 
 let IO = require("socket.io")(port, {
   cors: {
@@ -25,6 +34,13 @@ IO.on("connection", (socket) => {
     let name = data.name;
     let lat = data.lat;
     let long = data.long;
+    let userId = data.userId
+
+    db.collection("sessions").add({
+      userId: userId,
+      isAnswered: false,
+    });
+    
 
     socket.to(calleeId).emit("newCall", {
       callerId: socket.user,
@@ -38,6 +54,39 @@ IO.on("connection", (socket) => {
   socket.on("answerCall", (data) => {
     let callerId = data.callerId;
     let sdpAnswer = data.sdpAnswer;
+    let userId = data.userId
+    
+    const query = db.collection("sessions")
+  .where("userId", "==", userId)
+  .orderBy("timestamp", "desc")
+  .limit(1);
+
+query
+  .get()
+  .then((querySnapshot) => {
+    if (!querySnapshot.empty) {
+      const latestSession = querySnapshot.docs[0];
+      const sessionRef = db.collection(collectionName).doc(latestSession.id);
+      
+      // Update the "isAnswered" field of the latest session
+      sessionRef
+        .update({
+          isAnswered: true, // Update other fields as needed
+        })
+        .then(() => {
+          console.log("Latest session updated successfully");
+        })
+        .catch((error) => {
+          console.error("Error updating latest session: ", error);
+        });
+    } else {
+      console.log("No matching sessions found for the provided userId.");
+    }
+  })
+  .catch((error) => {
+    console.error("Error getting sessions: ", error);
+  });
+    
 
     socket.to(callerId).emit("callAnswered", {
       callee: socket.user,
