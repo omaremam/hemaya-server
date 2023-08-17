@@ -76,7 +76,7 @@ query
     console.log("Im in the query")
     if (!querySnapshot.empty) {
       const latestSession = querySnapshot.docs[0];
-      const sessionRef = db.collection(collectionName).doc(latestSession.id);
+      const sessionRef = db.collection("sessions").doc(latestSession.id);
       
       // Update the "isAnswered" field of the latest session
       sessionRef
