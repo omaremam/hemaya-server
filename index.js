@@ -43,6 +43,7 @@ IO.on("connection", (socket) => {
     db.collection("sessions").add({
       userId: userId,
       isAnswered: false,
+      timestamp: new Date()
     });
     
 
