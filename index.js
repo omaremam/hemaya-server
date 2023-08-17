@@ -61,10 +61,10 @@ IO.on("connection", (socket) => {
     let sdpAnswer = data.sdpAnswer;
     let userId = data.userId
 
-    console.log("Call answered by server for user ", userId)
+    console.log("Call answered by server for user ", callerId)
     
     const query = db.collection("sessions")
-  .where("userId", "==", userId)
+  .where("userId", "==", callerId)
   .orderBy("timestamp", "desc")
   .limit(1);
 
