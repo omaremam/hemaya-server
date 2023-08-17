@@ -68,34 +68,34 @@ IO.on("connection", (socket) => {
   .orderBy("timestamp", "desc")
   .limit(1);
 
-  console.log("i got the query")
+  console.log("i got the query", query)
 
-query
-  .get()
-  .then((querySnapshot) => {
-    console.log("Im in the query")
-    if (!querySnapshot.empty) {
-      const latestSession = querySnapshot.docs[0];
-      const sessionRef = db.collection("sessions").doc(latestSession.id);
+// query
+//   .get()
+//   .then((querySnapshot) => {
+//     console.log("Im in the query")
+//     if (!querySnapshot.empty) {
+//       const latestSession = querySnapshot.docs[0];
+//       const sessionRef = db.collection("sessions").doc(latestSession.id);
       
-      // Update the "isAnswered" field of the latest session
-      sessionRef
-        .update({
-          isAnswered: true, // Update other fields as needed
-        })
-        .then(() => {
-          console.log("Latest session updated successfully");
-        })
-        .catch((error) => {
-          console.error("Error updating latest session: ", error);
-        });
-    } else {
-      console.log("No matching sessions found for the provided userId.");
-    }
-  })
-  .catch((error) => {
-    console.error("Error getting sessions: ", error);
-  });
+//       // Update the "isAnswered" field of the latest session
+//       sessionRef
+//         .update({
+//           isAnswered: true, // Update other fields as needed
+//         })
+//         .then(() => {
+//           console.log("Latest session updated successfully");
+//         })
+//         .catch((error) => {
+//           console.error("Error updating latest session: ", error);
+//         });
+//     } else {
+//       console.log("No matching sessions found for the provided userId.");
+//     }
+//   })
+//   .catch((error) => {
+//     console.error("Error getting sessions: ", error);
+//   });
     
 
     socket.to(callerId).emit("callAnswered", {
