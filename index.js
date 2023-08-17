@@ -60,15 +60,20 @@ IO.on("connection", (socket) => {
     let callerId = data.callerId;
     let sdpAnswer = data.sdpAnswer;
     let userId = data.userId
+
+    console.log("Call answered by server for user ", userId)
     
     const query = db.collection("sessions")
   .where("userId", "==", userId)
   .orderBy("timestamp", "desc")
   .limit(1);
 
+  console.log("i got the query")
+
 query
   .get()
   .then((querySnapshot) => {
+    console.log("Im in the query")
     if (!querySnapshot.empty) {
       const latestSession = querySnapshot.docs[0];
       const sessionRef = db.collection(collectionName).doc(latestSession.id);
