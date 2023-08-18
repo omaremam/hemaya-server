@@ -68,7 +68,8 @@ app.post("/users", async (req, res) => {
       users.push({ id: userId, ...userData });
     });
 
-    const userId =  users.find(item => item.email == email).id
+    const userId =  users.find(item => item.email == email)
+    
     if(userId){
       res.status(400).json({ message: "User already exist"});
     }else{
