@@ -13,7 +13,7 @@ const app = express();
 
 app.use(bodyParser.json());
 
-const port = process.env.PORT || 5955;
+const port = process.env.PORT || 5000;
 const appPort = process.env.PORT || 5956;
 
 
@@ -129,7 +129,7 @@ app.delete("/users/:userId", async (req, res) => {
 app.post("/signin", async (req, res) => {
   try {
     const { email, password } = req.body;
-
+console.log(req.body)
     // Here, you should use Firebase Authentication for secure user sign-in
     // Firebase Authentication handles password hashing and verification
     // Example code to check email and password match (for demo purposes only):
