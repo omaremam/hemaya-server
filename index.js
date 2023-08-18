@@ -142,10 +142,10 @@ app.post("/signin", async (req, res) => {
       users.push({ id: userId, ...userData });
     });
 
-    const userId =  users.find(item => item.email == email && item.password == password).id
-    if (userId) {
+    const user =  users.find(item => item.email == email && item.password == password)
+    if (user) {
       // Assuming the query returns a single user document
-      return res.status(200).json({ userId });
+      return res.status(200).json({ user });
     } else {
       return res.status(401).send("Invalid credentials");
     }
