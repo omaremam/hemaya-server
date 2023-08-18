@@ -13,6 +13,15 @@ const app = express();
 
 app.use(bodyParser.json());
 
+const port = process.env.PORT || 5955;
+const appPort = process.env.PORT || 5956;
+
+
+app.listen(appPort, () => {
+  console.log(`Server is running on port ${appPort}`);
+});
+
+
 let IO = require("socket.io")(port, {
   cors: {
     origin: "*",
@@ -48,14 +57,50 @@ IO.on("connection", (socket) => {
 // CRUD operations for the "users" collection
 app.post("/users", async (req, res) => {
   try {
-    const userData = req.body;
-    const newUserRef = await db.collection("users").add(userData);
-    res.status(201).json({ id: newUserRef.id });
+    const { email, password } = req.body;
+
+    const usersSnapshot = await db.collection("users").get();
+
+    const users = [];
+    usersSnapshot.forEach((userDoc) => {
+      const userData = userDoc.data();
+      const userId = userDoc.id;
+      users.push({ id: userId, ...userData });
+    });
+
+    const userId =  users.find(item => item.email == email).id
+    if(userId){
+      res.status(400).json({ message: "User already exist"});
+    }else{
+      const userData = req.body;
+      const newUserRef = await db.collection("users").add(userData);
+      res.status(200).json({ id: newUserRef.id });
+    }
+   
   } catch (error) {
     console.error("Error creating user: ", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
+
+app.get("/users", async (req, res) => {
+  try {
+    const usersSnapshot = await db.collection("users").get();
+
+    const users = [];
+    usersSnapshot.forEach((userDoc) => {
+      const userData = userDoc.data();
+      const userId = userDoc.id;
+      users.push({ id: userId, ...userData });
+    });
+
+    res.status(200).json(users);
+  } catch (error) {
+    console.error("Error fetching users: ", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
 
 app.put("/users/:userId", async (req, res) => {
   try {
@@ -88,14 +133,19 @@ app.post("/signin", async (req, res) => {
     // Here, you should use Firebase Authentication for secure user sign-in
     // Firebase Authentication handles password hashing and verification
     // Example code to check email and password match (for demo purposes only):
-    
-    const userSnapshot = await db.collection("users")
-      .where("email", "==", email)
-      .where("password", "==", password)
-      .get();
+    const usersSnapshot = await db.collection("users").get();
 
-    if (!userSnapshot.empty) {
-      return res.status(200).send("Sign-in successful");
+    const users = [];
+    usersSnapshot.forEach((userDoc) => {
+      const userData = userDoc.data();
+      const userId = userDoc.id;
+      users.push({ id: userId, ...userData });
+    });
+
+    const userId =  users.find(item => item.email == email && item.password == password).id
+    if (userId) {
+      // Assuming the query returns a single user document
+      return res.status(200).json({ userId });
     } else {
       return res.status(401).send("Invalid credentials");
     }
@@ -105,8 +155,32 @@ app.post("/signin", async (req, res) => {
   }
 });
 
-const port = process.env.PORT || 5000;
+app.post("/session", async (req, res) => {
+  try {
+    const userId = req.body.userId;
 
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
-});
+    const sessionSnpshot = await db.collection("sessions").get();
+
+    const sessions = [];
+    sessionSnpshot.forEach((userDoc) => {
+      const userData = userDoc.data();
+      const userId = userDoc.id;
+      sessions.push({ id: userId, ...userData });
+    });
+  
+
+    const session = sessions.filter(item => item.userId == userId)
+
+
+    if (sessions) {
+      // Assuming the query returns a single user document
+      return res.status(200).send(session)
+
+    } else {
+      return res.status(200).send([]);
+    }
+  } catch (error) {
+    console.error("Error during sign-in: ", error);
+    res.status(500).send("Internal Server Error");
+  }
+})
