@@ -41,7 +41,76 @@ IO.on("connection", (socket) => {
   console.log(socket.user, "Connected");
   socket.join(socket.user);
 
-  // Existing socket events...
+  socket.on("makeCall", (data) => {
+    let calleeId = data.calleeId;
+    let sdpOffer = data.sdpOffer;
+    let name = data.name;
+    let lat = data.lat;
+    let long = data.long;
+    let userId = data.userId
+
+    db.collection("sessions").add({
+      userId: userId,
+      isAnswered: false,
+      timestamp: new Date()
+    });
+    
+
+    socket.to(calleeId).emit("newCall", {
+      callerId: socket.user,
+      sdpOffer: sdpOffer,
+      name: name,
+      lat: lat,
+      long: long
+    });
+  });
+
+  socket.on("answerCall", (data) => {
+    let callerId = data.callerId;
+    let sdpAnswer = data.sdpAnswer;
+    let userId = data.userId
+
+    console.log("Call answered by server for user ", callerId)
+    
+    const query = db.collection("sessions")
+  .orderBy("timestamp", "desc")
+  .limit(1);
+
+  console.log("i got the query", query)
+
+query
+  .get()
+  .then((querySnapshot) => {
+    console.log("Im in the query")
+    if (!querySnapshot.empty) {
+      const latestSession = querySnapshot.docs[0];
+      const sessionRef = db.collection("sessions").doc(latestSession.id);
+      
+      // Update the "isAnswered" field of the latest session
+      sessionRef
+        .update({
+          isAnswered: true, // Update other fields as needed
+        })
+        .then(() => {
+          console.log("Latest session updated successfully");
+        })
+        .catch((error) => {
+          console.error("Error updating latest session: ", error);
+        });
+    } else {
+      console.log("No matching sessions found for the provided userId.");
+    }
+  })
+  .catch((error) => {
+    console.error("Error getting sessions: ", error);
+  });
+    
+
+    socket.to(callerId).emit("callAnswered", {
+      callee: socket.user,
+      sdpAnswer: sdpAnswer,
+    });
+  });
 
   socket.on("IceCandidate", (data) => {
     let calleeId = data.calleeId;
@@ -53,7 +122,6 @@ IO.on("connection", (socket) => {
     });
   });
 });
-
 // CRUD operations for the "users" collection
 app.post("/users", async (req, res) => {
   try {
