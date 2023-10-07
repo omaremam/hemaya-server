@@ -292,6 +292,8 @@ app.delete("/users/:userId", async (req, res) => {
 // User sign-in API
 app.post("/signin", async (req, res) => {
   try {
+    console.log('$' *20);
+    console.log(req.body);
     const { email, password } = req.body;
     console.log(req.body);
     // Here, you should use Firebase Authentication for secure user sign-in
