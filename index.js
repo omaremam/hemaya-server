@@ -135,11 +135,8 @@ socket.on("IceCandidate", (data) => {
 
 });
 
-app.put("/session/log", async (req, res) => {
+app.get("/session/closed", async (req, res) => {
   try {
-    const isClosed = req.headers.isclosed;
-    console.log('$' *100);
-    console.log(isClosed);
     const query = db
       .collection("sessions")
       .orderBy("timestamp", "desc")
@@ -155,7 +152,7 @@ app.put("/session/log", async (req, res) => {
           // Update the "isAnswered" field of the latest session
           sessionRef
             .update({
-              isAnswered: isClosed, // Update other fields as needed
+              isAnswered: true, // Update other fields as needed
             })
             .then(() => {
               console.log("Latest session updated successfully");
@@ -180,6 +177,47 @@ app.put("/session/log", async (req, res) => {
   }
 });
 
+app.get("/session/open", async (req, res) => {
+  try {
+    const query = db
+      .collection("sessions")
+      .orderBy("timestamp", "desc")
+      .limit(1);
+
+    query
+      .get()
+      .then((querySnapshot) => {
+        if (!querySnapshot.empty) {
+          const latestSession = querySnapshot.docs[0];
+          const sessionRef = db.collection("sessions").doc(latestSession.id);
+
+          // Update the "isAnswered" field of the latest session
+          sessionRef
+            .update({
+              isAnswered: false, // Update other fields as needed
+            })
+            .then(() => {
+              console.log("Latest session updated successfully");
+              res.status(200).json({ message: "Successfully updated" });
+            })
+            .catch((error) => {
+              console.error("Error updating latest session: ", error);
+              res.status(400).json({ message: "error" });
+
+            });
+        } else {
+          console.log("No matching sessions found for the provided userId.");
+          res.status(400).json({ message: "error" });
+        }
+      })
+      .catch((error) => {
+        console.error("Error getting sessions: ", error);
+        res.status(400).json({ message: "error" });
+      });
+  } catch (error) {
+    res.status(400).json({ message: "Something wrong occurred" });
+  }
+});
 
 // CRUD operations for the "users" collection
 app.post("/users", async (req, res) => {
