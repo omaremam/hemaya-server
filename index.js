@@ -68,51 +68,8 @@ IO.on("connection", (socket) => {
     socket.to(appId).emit("endCall", { callerId: webId });
     socket.to(webId).emit("endCall", { callerId: appId });
   });
-});
 
-app.put("/session/log", async (req, res) => {
-  try {
-    const isClosed = req.headers.isclosed;
 
-    const query = db
-      .collection("sessions")
-      .orderBy("timestamp", "desc")
-      .limit(1);
-
-    query
-      .get()
-      .then((querySnapshot) => {
-        if (!querySnapshot.empty) {
-          const latestSession = querySnapshot.docs[0];
-          const sessionRef = db.collection("sessions").doc(latestSession.id);
-
-          // Update the "isAnswered" field of the latest session
-          sessionRef
-            .update({
-              isAnswered: isClosed, // Update other fields as needed
-            })
-            .then(() => {
-              console.log("Latest session updated successfully");
-              res.status(200).json({ message: "Successfully updated" });
-            })
-            .catch((error) => {
-              console.error("Error updating latest session: ", error);
-              res.status(400).json({ message: "error" });
-
-            });
-        } else {
-          console.log("No matching sessions found for the provided userId.");
-          res.status(400).json({ message: "error" });
-        }
-      })
-      .catch((error) => {
-        console.error("Error getting sessions: ", error);
-        res.status(400).json({ message: "error" });
-      });
-  } catch (error) {
-    res.status(400).json({ message: "Something wrong occurred" });
-  }
-});
 
 socket.on("answerCall", (data) => {
   let callerId = data.callerId;
@@ -167,6 +124,53 @@ socket.on("IceCandidate", (data) => {
     iceCandidate: iceCandidate,
   });
 });
+
+});
+
+app.put("/session/log", async (req, res) => {
+  try {
+    const isClosed = req.headers.isclosed;
+
+    const query = db
+      .collection("sessions")
+      .orderBy("timestamp", "desc")
+      .limit(1);
+
+    query
+      .get()
+      .then((querySnapshot) => {
+        if (!querySnapshot.empty) {
+          const latestSession = querySnapshot.docs[0];
+          const sessionRef = db.collection("sessions").doc(latestSession.id);
+
+          // Update the "isAnswered" field of the latest session
+          sessionRef
+            .update({
+              isAnswered: isClosed, // Update other fields as needed
+            })
+            .then(() => {
+              console.log("Latest session updated successfully");
+              res.status(200).json({ message: "Successfully updated" });
+            })
+            .catch((error) => {
+              console.error("Error updating latest session: ", error);
+              res.status(400).json({ message: "error" });
+
+            });
+        } else {
+          console.log("No matching sessions found for the provided userId.");
+          res.status(400).json({ message: "error" });
+        }
+      })
+      .catch((error) => {
+        console.error("Error getting sessions: ", error);
+        res.status(400).json({ message: "error" });
+      });
+  } catch (error) {
+    res.status(400).json({ message: "Something wrong occurred" });
+  }
+});
+
 
 // CRUD operations for the "users" collection
 app.post("/users", async (req, res) => {
