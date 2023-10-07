@@ -11,15 +11,7 @@ admin.initializeApp({
 const db = admin.firestore();
 const app = express();
 
-app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", "*");
-  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE");
-  res.header("Access-Control-Allow-Headers", "Content-Type");
-  bodyParser.json();
-  next();
-});
-
-// app.use(bodyParser.json());
+app.use(bodyParser.json());
 
 const port = process.env.PORT || 5000;
 const appPort = process.env.PORT || 5956;
@@ -292,8 +284,6 @@ app.delete("/users/:userId", async (req, res) => {
 // User sign-in API
 app.post("/signin", async (req, res) => {
   try {
-    console.log('$' *20);
-    console.log(req.body);
     const { email, password } = req.body;
     console.log(req.body);
     // Here, you should use Firebase Authentication for secure user sign-in
