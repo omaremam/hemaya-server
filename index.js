@@ -138,7 +138,8 @@ socket.on("IceCandidate", (data) => {
 app.put("/session/log", async (req, res) => {
   try {
     const isClosed = req.headers.isclosed;
-
+    console.log('$' *100);
+    console.log(isClosed);
     const query = db
       .collection("sessions")
       .orderBy("timestamp", "desc")
