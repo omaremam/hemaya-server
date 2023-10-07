@@ -5,7 +5,7 @@ require("firebase/firestore");
 const bodyParser = require("body-parser");
 
 admin.initializeApp({
-  credential: admin.credential.cert(credentials)
+  credential: admin.credential.cert(credentials),
 });
 
 const db = admin.firestore();
@@ -16,11 +16,9 @@ app.use(bodyParser.json());
 const port = process.env.PORT || 5000;
 const appPort = process.env.PORT || 5956;
 
-
 app.listen(appPort, () => {
   console.log(`Server is running on port ${appPort}`);
 });
-
 
 let IO = require("socket.io")(port, {
   cors: {
@@ -47,81 +45,129 @@ IO.on("connection", (socket) => {
     let name = data.name;
     let lat = data.lat;
     let long = data.long;
-    let userId = data.userId
+    let userId = data.userId;
 
     db.collection("sessions").add({
       userId: userId,
       isAnswered: false,
-      timestamp: new Date()
+      timestamp: new Date(),
     });
-    
 
     socket.to(calleeId).emit("newCall", {
       callerId: socket.user,
       sdpOffer: sdpOffer,
       name: name,
       lat: lat,
-      long: long
+      long: long,
     });
   });
 
-  socket.on("answerCall", (data) => {
-    let callerId = data.callerId;
-    let sdpAnswer = data.sdpAnswer;
-    let userId = data.userId
-
-    console.log("Call answered by server for user ", callerId)
-    
-    const query = db.collection("sessions")
-  .orderBy("timestamp", "desc")
-  .limit(1);
-
-  console.log("i got the query", query)
-
-query
-  .get()
-  .then((querySnapshot) => {
-    console.log("Im in the query")
-    if (!querySnapshot.empty) {
-      const latestSession = querySnapshot.docs[0];
-      const sessionRef = db.collection("sessions").doc(latestSession.id);
-      
-      // Update the "isAnswered" field of the latest session
-      sessionRef
-        .update({
-          isAnswered: true, // Update other fields as needed
-        })
-        .then(() => {
-          console.log("Latest session updated successfully");
-        })
-        .catch((error) => {
-          console.error("Error updating latest session: ", error);
-        });
-    } else {
-      console.log("No matching sessions found for the provided userId.");
-    }
-  })
-  .catch((error) => {
-    console.error("Error getting sessions: ", error);
-  });
-    
-
-    socket.to(callerId).emit("callAnswered", {
-      callee: socket.user,
-      sdpAnswer: sdpAnswer,
-    });
-  });
-
-  socket.on("IceCandidate", (data) => {
-    let calleeId = data.calleeId;
-    let iceCandidate = data.iceCandidate;
-
-    socket.to(calleeId).emit("IceCandidate", {
-      sender: socket.user,
-      iceCandidate: iceCandidate,
-    });
+  socket.on("endCall", (data) => {
+    let appId = data.appId;
+    let webId = "1234";
+    socket.to(appId).emit("endCall", { callerId: webId });
+    socket.to(webId).emit("endCall", { callerId: appId });
   });
 });
+
+app.put("/session/log", async (req, res) => {
+  try {
+    const isClosed = req.headers.isclosed;
+
+    const query = db
+      .collection("sessions")
+      .orderBy("timestamp", "desc")
+      .limit(1);
+
+    query
+      .get()
+      .then((querySnapshot) => {
+        if (!querySnapshot.empty) {
+          const latestSession = querySnapshot.docs[0];
+          const sessionRef = db.collection("sessions").doc(latestSession.id);
+
+          // Update the "isAnswered" field of the latest session
+          sessionRef
+            .update({
+              isAnswered: isClosed, // Update other fields as needed
+            })
+            .then(() => {
+              console.log("Latest session updated successfully");
+              res.status(200).json({ message: "Successfully updated" });
+            })
+            .catch((error) => {
+              console.error("Error updating latest session: ", error);
+              res.status(400).json({ message: "error" });
+
+            });
+        } else {
+          console.log("No matching sessions found for the provided userId.");
+          res.status(400).json({ message: "error" });
+        }
+      })
+      .catch((error) => {
+        console.error("Error getting sessions: ", error);
+        res.status(400).json({ message: "error" });
+      });
+  } catch (error) {
+    res.status(400).json({ message: "Something wrong occurred" });
+  }
+});
+
+socket.on("answerCall", (data) => {
+  let callerId = data.callerId;
+  let sdpAnswer = data.sdpAnswer;
+  let userId = data.userId;
+
+  console.log("Call answered by server for user ", callerId);
+
+  const query = db.collection("sessions").orderBy("timestamp", "desc").limit(1);
+
+  console.log("i got the query", query);
+
+  query
+    .get()
+    .then((querySnapshot) => {
+      console.log("Im in the query");
+      if (!querySnapshot.empty) {
+        const latestSession = querySnapshot.docs[0];
+        const sessionRef = db.collection("sessions").doc(latestSession.id);
+
+        // Update the "isAnswered" field of the latest session
+        sessionRef
+          .update({
+            isAnswered: true, // Update other fields as needed
+          })
+          .then(() => {
+            console.log("Latest session updated successfully");
+          })
+          .catch((error) => {
+            console.error("Error updating latest session: ", error);
+          });
+      } else {
+        console.log("No matching sessions found for the provided userId.");
+      }
+    })
+    .catch((error) => {
+      console.error("Error getting sessions: ", error);
+    });
+
+  socket.to(callerId).emit("callAnswered", {
+    callee: socket.user,
+    sdpAnswer: sdpAnswer,
+  });
+});
+
+socket.on("IceCandidate", (data) => {
+  let calleeId = data.calleeId;
+  let iceCandidate = data.iceCandidate;
+
+  socket.to(calleeId).emit("IceCandidate", {
+    sender: socket.user,
+    iceCandidate: iceCandidate,
+  });
+});
+
 // CRUD operations for the "users" collection
 app.post("/users", async (req, res) => {
   try {
@@ -136,16 +182,15 @@ app.post("/users", async (req, res) => {
       users.push({ id: userId, ...userData });
     });
 
-    const userId =  users.find(item => item.email == email)
-    
-    if(userId){
-      res.status(400).json({ message: "User already exist"});
-    }else{
+    const userId = users.find((item) => item.email == email);
+
+    if (userId) {
+      res.status(400).json({ message: "User already exist" });
+    } else {
       const userData = req.body;
       const newUserRef = await db.collection("users").add(userData);
       res.status(200).json({ id: newUserRef.id });
     }
-   
   } catch (error) {
     console.error("Error creating user: ", error);
     res.status(500).json({ error: "Internal Server Error" });
@@ -169,7 +214,6 @@ app.get("/users", async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
-
 
 app.put("/users/:userId", async (req, res) => {
   try {
@@ -198,7 +242,7 @@ app.delete("/users/:userId", async (req, res) => {
 app.post("/signin", async (req, res) => {
   try {
     const { email, password } = req.body;
-console.log(req.body)
+    console.log(req.body);
     // Here, you should use Firebase Authentication for secure user sign-in
     // Firebase Authentication handles password hashing and verification
     // Example code to check email and password match (for demo purposes only):
@@ -211,10 +255,12 @@ console.log(req.body)
       users.push({ id: userId, ...userData });
     });
 
-    const user =  users.find(item => item.email == email && item.password == password)
+    const user = users.find(
+      (item) => item.email == email && item.password == password
+    );
     if (user) {
       // Assuming the query returns a single user document
-      return res.status(200).json( user );
+      return res.status(200).json(user);
     } else {
       return res.status(401).send("Invalid credentials");
     }
@@ -236,15 +282,12 @@ app.post("/session", async (req, res) => {
       const userId = userDoc.id;
       sessions.push({ id: userId, ...userData });
     });
-  
 
-    const session = sessions.filter(item => item.userId == userId)
-
+    const session = sessions.filter((item) => item.userId == userId);
 
     if (sessions) {
       // Assuming the query returns a single user document
-      return res.status(200).send(session)
-
+      return res.status(200).send(session);
     } else {
       return res.status(200).send([]);
     }
@@ -252,4 +295,4 @@ app.post("/session", async (req, res) => {
     console.error("Error during sign-in: ", error);
     res.status(500).send("Internal Server Error");
   }
-})
+});
