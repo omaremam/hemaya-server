@@ -148,6 +148,7 @@ app.get("/session/closed", async (req, res) => {
             })
             .then(() => {
               console.log("Latest session updated successfully");
+              console.log("type: مغلق");
               res.status(200).json({ message: "Successfully updated" });
             })
             .catch((error) => {
@@ -189,6 +190,7 @@ app.get("/session/open", async (req, res) => {
               isAnswered: false, // Update other fields as needed
             })
             .then(() => {
+              console.log("type: معلق");
               console.log("Latest session updated successfully");
               res.status(200).json({ message: "Successfully updated" });
             })
