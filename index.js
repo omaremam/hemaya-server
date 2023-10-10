@@ -268,9 +268,6 @@ app.post("/signin", async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Hash the user email using CryptoJS
-    const hashedEmail = CryptoJS.SHA256(email).toString();
-
     // Use the hashed email for comparison
     const usersSnapshot = await db.collection("users").get();
 
@@ -325,19 +322,11 @@ app.post("/session", async (req, res) => {
 });
 
 
-app.post("/serverToClientCall", async (req, res) => {
+
+app.post("/validateMobileCall", async (req, res) => {
   try {
-    const data = req.body;
-    const calleeId = data.calleeId;
-    const sdpOffer = data.sdpOffer;
-    const name = data.name;
-    const userId = data.userId;
-
-    if (calleeId === "mobile") {
-      const { calleeEmail } = data;
-
-      // Hash the callee email using CryptoJS
-      const hashedCalleeEmail = CryptoJS.SHA256(calleeEmail).toString();
+    if(callerId == 1234){
+      const { calleeEmail } = req.body;
 
       // Find the user with the hashed email in Firebase
       const usersSnapshot = await db.collection("users").get();
@@ -351,48 +340,12 @@ app.post("/serverToClientCall", async (req, res) => {
 
       const callee = users.find((item) => item.email === calleeEmail);
 
-      if (!callee) {
-        // Handle callee not found
-        return res.status(404).json({ reason: "Callee not found" });
-      }
-
-      // Authenticate the user using the original email
-      const { email } = callee;
-
-      // Now, initiate the call with the mobile app using the retrieved key
-      const newSessionRef = await db.collection("sessions").add({
-        userId: userId,
-        isAnswered: false,
-        timestamp: new Date(),
-      });
-
-      // Emit a new call event to the mobile app
-      IO.to(callee.call_key).emit("newCall", {
-        callerId: "web_app", // Set a unique identifier for the web app
-        sdpOffer: sdpOffer,
-        name: name,
-      });
-
-      // Send a success response to the web app
-      res.status(200).json({ sessionId: newSessionRef.id });
-    } else if (calleeId === "admin") {
-      // Handle the call to admin as before
-      db.collection("sessions").add({
-        userId: userId,
-        isAnswered: false,
-        timestamp: new Date(),
-      });
-
-      IO.to(calleeId).emit("newCall", {
-        callerId: socket.user,
-        sdpOffer: sdpOffer,
-        name: name,
-      });
-
-      res.status(200).send("Call initiated successfully");
+    res.status(200).json({ callee, otherDetails });
+    }else{
+      res.status(401).json({ error: "Unauthorized call" });
     }
   } catch (error) {
-    console.error("Error during makeCall: ", error);
+    console.error("Error initiating call: ", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
