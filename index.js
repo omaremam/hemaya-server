@@ -6,6 +6,8 @@ const bodyParser = require("body-parser");
 const crypto = require("crypto");
 const CryptoJS = require("crypto-js");
 
+const cors = require("cors");
+
 admin.initializeApp({
   credential: admin.credential.cert(credentials),
 });
@@ -13,6 +15,7 @@ admin.initializeApp({
 const db = admin.firestore();
 const app = express();
 
+app.use(cors());
 app.use(bodyParser.json());
 
 const port = process.env.PORT || 5000;
