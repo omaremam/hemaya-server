@@ -3,6 +3,8 @@ const admin = require("firebase-admin");
 const credentials = require("./hemaya-860b8-firebase-adminsdk-jv1xa-ee5d71199f.json");
 require("firebase/firestore");
 const bodyParser = require("body-parser");
+const crypto = require("crypto");
+const CryptoJS = require("crypto-js");
 
 admin.initializeApp({
   credential: admin.credential.cert(credentials),
@@ -39,27 +41,69 @@ IO.on("connection", (socket) => {
   console.log(socket.user, "Connected");
   socket.join(socket.user);
 
-  socket.on("makeCall", (data) => {
+  socket.on("makeCall", async (data) => {
     let calleeId = data.calleeId;
     let sdpOffer = data.sdpOffer;
     let name = data.name;
-    let lat = data.lat;
-    let long = data.long;
     let userId = data.userId;
 
-    db.collection("sessions").add({
-      userId: userId,
-      isAnswered: false,
-      timestamp: new Date(),
-    });
+    if (calleeId === "mobile") {
+      const { calleeEmail } = data;
 
-    socket.to(calleeId).emit("newCall", {
-      callerId: socket.user,
-      sdpOffer: sdpOffer,
-      name: name,
-      lat: lat,
-      long: long,
-    });
+      // Hash the callee email using CryptoJS
+      const hashedCalleeEmail = CryptoJS.SHA256(calleeEmail).toString();
+
+      // Find the user with the hashed email in Firebase
+      const usersSnapshot = await db.collection("users").get();
+      const users = [];
+      usersSnapshot.forEach((userDoc) => {
+        const userData = userDoc.data();
+        const userEmail = userData.email;
+        const userCallKey = userData.call_key;
+        users.push({ email: userEmail, call_key: userCallKey });
+      });
+
+      const callee = users.find((item) => item.email === calleeEmail);
+
+      if (!callee) {
+        // Handle callee not found
+        socket.to(socket.user).emit("callFailed", { reason: "Callee not found" });
+        return;
+      }
+
+      // Authenticate the user using the original email
+      const { email } = callee;
+
+      // Now, initiate the call with the mobile app using the retrieved key
+      const newSessionRef = await db.collection("sessions").add({
+        userId: userId,
+        isAnswered: false,
+        timestamp: new Date(),
+      });
+
+      // Emit a new call event to the mobile app
+      IO.to(callee.call_key).emit("newCall", {
+        callerId: "web_app", // Set a unique identifier for the web app
+        sdpOffer: sdpOffer,
+        name: name,
+      });
+
+      // Send a success response to the web app
+      socket.to(socket.user).emit("callSuccess", { sessionId: newSessionRef.id });
+    } else if (calleeId === "admin") {
+      // Handle the call to admin as before
+      db.collection("sessions").add({
+        userId: userId,
+        isAnswered: false,
+        timestamp: new Date(),
+      });
+
+      socket.to(calleeId).emit("newCall", {
+        callerId: socket.user,
+        sdpOffer: sdpOffer,
+        name: name,
+      });
+    }
   });
 
   socket.on("endCall", (data) => {
@@ -69,70 +113,64 @@ IO.on("connection", (socket) => {
     socket.to(webId).emit("endCall", { callerId: appId });
   });
 
+  socket.on("answerCall", (data) => {
+    let callerId = data.callerId;
+    let sdpAnswer = data.sdpAnswer;
+    let userId = data.userId;
 
+    console.log("Call answered by server for user ", callerId);
 
-socket.on("answerCall", (data) => {
-  let callerId = data.callerId;
-  let sdpAnswer = data.sdpAnswer;
-  let userId = data.userId;
+    const query = db.collection("sessions").orderBy("timestamp", "desc").limit(1);
 
-  console.log("Call answered by server for user ", callerId);
+    console.log("i got the query", query);
 
-  const query = db.collection("sessions").orderBy("timestamp", "desc").limit(1);
+    query
+      .get()
+      .then((querySnapshot) => {
+        console.log("Im in the query");
+        if (!querySnapshot.empty) {
+          const latestSession = querySnapshot.docs[0];
+          const sessionRef = db.collection("sessions").doc(latestSession.id);
 
-  console.log("i got the query", query);
+          // Update the "isAnswered" field of the latest session
+          sessionRef
+            .update({
+              isAnswered: true, // Update other fields as needed
+            })
+            .then(() => {
+              console.log("Latest session updated successfully");
+            })
+            .catch((error) => {
+              console.error("Error updating latest session: ", error);
+            });
+        } else {
+          console.log("No matching sessions found for the provided userId.");
+        }
+      })
+      .catch((error) => {
+        console.error("Error getting sessions: ", error);
+      });
 
-  query
-    .get()
-    .then((querySnapshot) => {
-      console.log("Im in the query");
-      if (!querySnapshot.empty) {
-        const latestSession = querySnapshot.docs[0];
-        const sessionRef = db.collection("sessions").doc(latestSession.id);
-
-        // Update the "isAnswered" field of the latest session
-        sessionRef
-          .update({
-            isAnswered: true, // Update other fields as needed
-          })
-          .then(() => {
-            console.log("Latest session updated successfully");
-          })
-          .catch((error) => {
-            console.error("Error updating latest session: ", error);
-          });
-      } else {
-        console.log("No matching sessions found for the provided userId.");
-      }
-    })
-    .catch((error) => {
-      console.error("Error getting sessions: ", error);
+    socket.to(callerId).emit("callAnswered", {
+      callee: socket.user,
+      sdpAnswer: sdpAnswer,
     });
-
-  socket.to(callerId).emit("callAnswered", {
-    callee: socket.user,
-    sdpAnswer: sdpAnswer,
   });
-});
 
-socket.on("IceCandidate", (data) => {
-  let calleeId = data.calleeId;
-  let iceCandidate = data.iceCandidate;
+  socket.on("IceCandidate", (data) => {
+    let calleeId = data.calleeId;
+    let iceCandidate = data.iceCandidate;
 
-  socket.to(calleeId).emit("IceCandidate", {
-    sender: socket.user,
-    iceCandidate: iceCandidate,
+    socket.to(calleeId).emit("IceCandidate", {
+      sender: socket.user,
+      iceCandidate: iceCandidate,
+    });
   });
-});
-
 });
 
 app.get("/session/closed", async (req, res) => {
   try {
-    const query = db
-      .collection("sessions")
-      .orderBy("timestamp", "desc")
-      .limit(1);
+    const query = db.collection("sessions").orderBy("timestamp", "desc").limit(1);
 
     query
       .get()
@@ -154,7 +192,6 @@ app.get("/session/closed", async (req, res) => {
             .catch((error) => {
               console.error("Error updating latest session: ", error);
               res.status(400).json({ message: "error" });
-
             });
         } else {
           console.log("No matching sessions found for the provided userId.");
@@ -172,10 +209,7 @@ app.get("/session/closed", async (req, res) => {
 
 app.get("/session/open", async (req, res) => {
   try {
-    const query = db
-      .collection("sessions")
-      .orderBy("timestamp", "desc")
-      .limit(1);
+    const query = db.collection("sessions").orderBy("timestamp", "desc").limit(1);
 
     query
       .get()
@@ -197,7 +231,6 @@ app.get("/session/open", async (req, res) => {
             .catch((error) => {
               console.error("Error updating latest session: ", error);
               res.status(400).json({ message: "error" });
-
             });
         } else {
           console.log("No matching sessions found for the provided userId.");
@@ -218,6 +251,9 @@ app.post("/users", async (req, res) => {
   try {
     const { email, password } = req.body;
 
+    // Hash the user email using CryptoJS
+    const hashedEmail = CryptoJS.SHA256(email).toString();
+
     const usersSnapshot = await db.collection("users").get();
 
     const users = [];
@@ -227,13 +263,19 @@ app.post("/users", async (req, res) => {
       users.push({ id: userId, ...userData });
     });
 
-    const userId = users.find((item) => item.email == email);
+    // Use the original email for comparison
+    const user = users.find((item) => item.email === email);
 
-    if (userId) {
-      res.status(400).json({ message: "User already exist" });
+    if (user) {
+      res.status(400).json({ message: "User already exists" });
     } else {
-      const userData = req.body;
-      const newUserRef = await db.collection("users").add(userData);
+      // Store the unhashed email and hashed email as call_key in Firebase
+      const newUserRef = await db.collection("users").add({
+        email: email,
+        password: password,
+        call_key: hashedEmail,
+      });
+
       res.status(200).json({ id: newUserRef.id });
     }
   } catch (error) {
@@ -287,10 +329,11 @@ app.delete("/users/:userId", async (req, res) => {
 app.post("/signin", async (req, res) => {
   try {
     const { email, password } = req.body;
-    console.log(req.body);
-    // Here, you should use Firebase Authentication for secure user sign-in
-    // Firebase Authentication handles password hashing and verification
-    // Example code to check email and password match (for demo purposes only):
+
+    // Hash the user email using CryptoJS
+    const hashedEmail = CryptoJS.SHA256(email).toString();
+
+    // Use the hashed email for comparison
     const usersSnapshot = await db.collection("users").get();
 
     const users = [];
@@ -301,8 +344,9 @@ app.post("/signin", async (req, res) => {
     });
 
     const user = users.find(
-      (item) => item.email == email && item.password == password
+      (item) => item.email === email && item.password === password
     );
+
     if (user) {
       // Assuming the query returns a single user document
       return res.status(200).json(user);
