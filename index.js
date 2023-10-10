@@ -325,9 +325,8 @@ app.post("/session", async (req, res) => {
 
 app.post("/validateMobileCall", async (req, res) => {
   try {
+    const { callerId,calleeEmail } = req.body;
     if(callerId == 1234){
-      const { calleeEmail } = req.body;
-
       // Find the user with the hashed email in Firebase
       const usersSnapshot = await db.collection("users").get();
       const users = [];
