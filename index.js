@@ -340,6 +340,7 @@ app.post("/validateMobileCall", async (req, res) => {
       });
 
       const callee = users.find((item) => item.email === calleeEmail);
+      console.log(callee);
 
     res.status(200).json( callee );
     }else{
