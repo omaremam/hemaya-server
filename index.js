@@ -341,7 +341,7 @@ app.post("/validateMobileCall", async (req, res) => {
 
       const callee = users.find((item) => item.email === calleeEmail);
 
-    res.status(200).json({ callee, otherDetails });
+    res.status(200).json( callee );
     }else{
       res.status(401).json({ error: "Unauthorized call" });
     }
