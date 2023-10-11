@@ -50,7 +50,10 @@ IO.on("connection", (socket) => {
 
     console.log("Call answered by server for user ", callerId);
 
-    const query = db.collection("sessions").orderBy("timestamp", "desc").limit(1);
+    const query = db
+      .collection("sessions")
+      .orderBy("timestamp", "desc")
+      .limit(1);
 
     console.log("i got the query", query);
 
@@ -82,107 +85,21 @@ IO.on("connection", (socket) => {
       });
 
     // web listen for incoming calls
-  socket.to(callerId).emit("newCall", {
-    callerId: socket.user,
-    sdpOffer: sdpOffer,
-    name: name,
-    lat: lat,
-    long: long,
-  });
-});
-
-socket.on("endCall", (data) => {
-  let appId = data.appId;
-  let webId = "1234";
-  socket.to(appId).emit("endCall", { callerId: webId });
-  socket.to(webId).emit("endCall", { callerId: appId });
-});
-});
-
-app.get("/session/closed", async (req, res) => {
-  try {
-    const query = db.collection("sessions").orderBy("timestamp", "desc").limit(1);
-
-    query
-      .get()
-      .then((querySnapshot) => {
-        if (!querySnapshot.empty) {
-          const latestSession = querySnapshot.docs[0];
-          const sessionRef = db.collection("sessions").doc(latestSession.id);
-
-          // Update the "isAnswered" field of the latest session
-          sessionRef
-            .update({
-              isAnswered: true, // Update other fields as needed
-            })
-            .then(() => {
-              console.log("Latest session updated successfully");
-              console.log("type: مغلق");
-              res.status(200).json({ message: "Successfully updated" });
-            })
-            .catch((error) => {
-              console.error("Error updating latest session: ", error);
-              res.status(400).json({ message: "error" });
-
-            });
-        } else {
-          console.log("No matching sessions found for the provided userId.");
-          res.status(400).json({ message: "error" });
-        }
-      })
-      .catch((error) => {
-        console.error("Error getting sessions: ", error);
-        res.status(400).json({ message: "error" });
-      });
-  } catch (error) {
-    res.status(400).json({ message: "Something wrong occurred" });
-  }
-});
-
-  socket.on("answerCall", (data) => {
-    let callerId = data.callerId;
-    let sdpAnswer = data.sdpAnswer;
-    let userId = data.userId;
-
-    console.log("Call answered by server for user ", callerId);
-
-    const query = db.collection("sessions").orderBy("timestamp", "desc").limit(1);
-
-    console.log("i got the query", query);
-
-    query
-      .get()
-      .then((querySnapshot) => {
-        console.log("Im in the query");
-        if (!querySnapshot.empty) {
-          const latestSession = querySnapshot.docs[0];
-          const sessionRef = db.collection("sessions").doc(latestSession.id);
-
-          // Update the "isAnswered" field of the latest session
-          sessionRef
-            .update({
-              isAnswered: true, // Update other fields as needed
-            })
-            .then(() => {
-              console.log("Latest session updated successfully");
-            })
-            .catch((error) => {
-              console.error("Error updating latest session: ", error);
-            });
-        } else {
-          console.log("No matching sessions found for the provided userId.");
-        }
-      })
-      .catch((error) => {
-        console.error("Error getting sessions: ", error);
-      });
-
-    socket.to(callerId).emit("callAnswered", {
-      callee: socket.user,
-      sdpAnswer: sdpAnswer,
+    socket.to(callerId).emit("newCall", {
+      callerId: socket.user,
+      sdpOffer: sdpOffer,
+      name: name,
+      lat: lat,
+      long: long,
     });
   });
 
+  socket.on("endCall", (data) => {
+    let appId = data.appId;
+    let webId = "1234";
+    socket.to(appId).emit("endCall", { callerId: webId });
+    socket.to(webId).emit("endCall", { callerId: appId });
+  });
   socket.on("IceCandidate", (data) => {
     let calleeId = data.calleeId;
     let iceCandidate = data.iceCandidate;
@@ -192,10 +109,14 @@ app.get("/session/closed", async (req, res) => {
       iceCandidate: iceCandidate,
     });
   });
+});
 
 app.get("/session/closed", async (req, res) => {
   try {
-    const query = db.collection("sessions").orderBy("timestamp", "desc").limit(1);
+    const query = db
+      .collection("sessions")
+      .orderBy("timestamp", "desc")
+      .limit(1);
 
     query
       .get()
@@ -234,7 +155,10 @@ app.get("/session/closed", async (req, res) => {
 
 app.get("/session/open", async (req, res) => {
   try {
-    const query = db.collection("sessions").orderBy("timestamp", "desc").limit(1);
+    const query = db
+      .collection("sessions")
+      .orderBy("timestamp", "desc")
+      .limit(1);
 
     query
       .get()
@@ -407,14 +331,12 @@ app.post("/session", async (req, res) => {
   }
 });
 
-
-
 app.post("/validateMobileCall", async (req, res) => {
   try {
-    const { callerId,calleeEmail } = req.body;
-    console.log("web calling mobile")
-    console.log(req.body)
-    if(callerId == 1234){
+    const { callerId, calleeEmail } = req.body;
+    console.log("web calling mobile");
+    console.log(req.body);
+    if (callerId == 1234) {
       // Find the user with the hashed email in Firebase
       const usersSnapshot = await db.collection("users").get();
       const users = [];
@@ -428,8 +350,8 @@ app.post("/validateMobileCall", async (req, res) => {
       const callee = users.find((item) => item.email === calleeEmail);
       console.log(callee);
 
-    res.status(200).json( callee );
-    }else{
+      res.status(200).json(callee);
+    } else {
       res.status(401).json({ error: "Unauthorized call" });
     }
   } catch (error) {
