@@ -3,6 +3,9 @@ const admin = require("firebase-admin");
 const credentials = require("./hemaya-860b8-firebase-adminsdk-jv1xa-ee5d71199f.json");
 require("firebase/firestore");
 const bodyParser = require("body-parser");
+const CryptoJS = require("crypto-js");
+
+const cors = require("cors");
 
 admin.initializeApp({
   credential: admin.credential.cert(credentials),
@@ -11,15 +14,8 @@ admin.initializeApp({
 const db = admin.firestore();
 const app = express();
 
-app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", "*");
-  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE");
-  res.header("Access-Control-Allow-Headers", "Content-Type");
-  bodyParser.json();
-  next();
-});
-
-// app.use(bodyParser.json());
+app.use(cors());
+app.use(bodyParser.json());
 
 const port = process.env.PORT || 5000;
 const appPort = process.env.PORT || 5956;
@@ -46,7 +42,7 @@ IO.use((socket, next) => {
 IO.on("connection", (socket) => {
   console.log(socket.user, "Connected");
   socket.join(socket.user);
-
+  
   socket.on("makeCall", (data) => {
     let calleeId = data.calleeId;
     let sdpOffer = data.sdpOffer;
@@ -79,59 +75,62 @@ IO.on("connection", (socket) => {
 
 
 
-socket.on("answerCall", (data) => {
-  let callerId = data.callerId;
-  let sdpAnswer = data.sdpAnswer;
-  let userId = data.userId;
+  socket.on("answerCall", (data) => {
+    let callerId = data.callerId;
+    let sdpAnswer = data.sdpAnswer;
+    let userId = data.userId;
 
-  console.log("Call answered by server for user ", callerId);
+    console.log("Call answered by server for user ", callerId);
 
-  const query = db.collection("sessions").orderBy("timestamp", "desc").limit(1);
+    const query = db
+      .collection("sessions")
+      .orderBy("timestamp", "desc")
+      .limit(1);
 
-  console.log("i got the query", query);
+    console.log("i got the query", query);
 
-  query
-    .get()
-    .then((querySnapshot) => {
-      console.log("Im in the query");
-      if (!querySnapshot.empty) {
-        const latestSession = querySnapshot.docs[0];
-        const sessionRef = db.collection("sessions").doc(latestSession.id);
+    query
+      .get()
+      .then((querySnapshot) => {
+        console.log("Im in the query");
+        if (!querySnapshot.empty) {
+          const latestSession = querySnapshot.docs[0];
+          const sessionRef = db.collection("sessions").doc(latestSession.id);
 
-        // Update the "isAnswered" field of the latest session
-        sessionRef
-          .update({
-            isAnswered: true, // Update other fields as needed
-          })
-          .then(() => {
-            console.log("Latest session updated successfully");
-          })
-          .catch((error) => {
-            console.error("Error updating latest session: ", error);
-          });
-      } else {
-        console.log("No matching sessions found for the provided userId.");
-      }
-    })
-    .catch((error) => {
-      console.error("Error getting sessions: ", error);
+          // Update the "isAnswered" field of the latest session
+          sessionRef
+            .update({
+              isAnswered: true, // Update other fields as needed
+            })
+            .then(() => {
+              console.log("Latest session updated successfully");
+            })
+            .catch((error) => {
+              console.error("Error updating latest session: ", error);
+            });
+        } else {
+          console.log("No matching sessions found for the provided userId.");
+        }
+      })
+      .catch((error) => {
+        console.error("Error getting sessions: ", error);
+      });
+
+    socket.to(callerId).emit("callAnswered", {
+      callee: socket.user,
+      sdpAnswer: sdpAnswer,
     });
-
-  socket.to(callerId).emit("callAnswered", {
-    callee: socket.user,
-    sdpAnswer: sdpAnswer,
   });
-});
 
-socket.on("IceCandidate", (data) => {
-  let calleeId = data.calleeId;
-  let iceCandidate = data.iceCandidate;
+  socket.on("IceCandidate", (data) => {
+    let calleeId = data.calleeId;
+    let iceCandidate = data.iceCandidate;
 
-  socket.to(calleeId).emit("IceCandidate", {
-    sender: socket.user,
-    iceCandidate: iceCandidate,
+    socket.to(calleeId).emit("IceCandidate", {
+      sender: socket.user,
+      iceCandidate: iceCandidate,
+    });
   });
-});
 
 });
 
@@ -156,6 +155,7 @@ app.get("/session/closed", async (req, res) => {
             })
             .then(() => {
               console.log("Latest session updated successfully");
+              console.log("type: مغلق");
               res.status(200).json({ message: "Successfully updated" });
             })
             .catch((error) => {
@@ -197,6 +197,7 @@ app.get("/session/open", async (req, res) => {
               isAnswered: false, // Update other fields as needed
             })
             .then(() => {
+              console.log("type: معلق");
               console.log("Latest session updated successfully");
               res.status(200).json({ message: "Successfully updated" });
             })
@@ -224,6 +225,9 @@ app.post("/users", async (req, res) => {
   try {
     const { email, password } = req.body;
 
+    // Hash the user email using CryptoJS
+    const hashedEmail = CryptoJS.SHA256(email).toString();
+
     const usersSnapshot = await db.collection("users").get();
 
     const users = [];
@@ -233,13 +237,18 @@ app.post("/users", async (req, res) => {
       users.push({ id: userId, ...userData });
     });
 
-    const userId = users.find((item) => item.email == email);
+    const user = users.find((item) => item.email === email);
 
-    if (userId) {
-      res.status(400).json({ message: "User already exist" });
+    if (user) {
+      res.status(400).json({ message: "User already exists" });
     } else {
-      const userData = req.body;
-      const newUserRef = await db.collection("users").add(userData);
+      // Store the unhashed email and hashed email as call_key in Firebase
+      const newUserRef = await db.collection("users").add({
+        email: email,
+        password: password,
+        call_key: hashedEmail,
+      });
+
       res.status(200).json({ id: newUserRef.id });
     }
   } catch (error) {
@@ -293,10 +302,8 @@ app.delete("/users/:userId", async (req, res) => {
 app.post("/signin", async (req, res) => {
   try {
     const { email, password } = req.body;
-    console.log(req.body);
-    // Here, you should use Firebase Authentication for secure user sign-in
-    // Firebase Authentication handles password hashing and verification
-    // Example code to check email and password match (for demo purposes only):
+
+    // Use the hashed email for comparison
     const usersSnapshot = await db.collection("users").get();
 
     const users = [];
@@ -307,8 +314,9 @@ app.post("/signin", async (req, res) => {
     });
 
     const user = users.find(
-      (item) => item.email == email && item.password == password
+      (item) => item.email === email && item.password === password
     );
+
     if (user) {
       // Assuming the query returns a single user document
       return res.status(200).json(user);
@@ -345,5 +353,34 @@ app.post("/session", async (req, res) => {
   } catch (error) {
     console.error("Error during sign-in: ", error);
     res.status(500).send("Internal Server Error");
+  }
+});
+
+app.post("/validateMobileCall", async (req, res) => {
+  try {
+    const { callerId, calleeEmail } = req.body;
+    console.log("web calling mobile");
+    console.log(req.body);
+    if (callerId == 1234) {
+      // Find the user with the hashed email in Firebase
+      const usersSnapshot = await db.collection("users").get();
+      const users = [];
+      usersSnapshot.forEach((userDoc) => {
+        const userData = userDoc.data();
+        const userEmail = userData.email;
+        const userCallKey = userData.call_key;
+        users.push({ email: userEmail, call_key: userCallKey });
+      });
+
+      const callee = users.find((item) => item.email === calleeEmail);
+      console.log(callee);
+
+      res.status(200).json(callee);
+    } else {
+      res.status(401).json({ error: "Unauthorized call" });
+    }
+  } catch (error) {
+    console.error("Error initiating call: ", error);
+    res.status(500).json({ error: "Internal Server Error" });
   }
 });
