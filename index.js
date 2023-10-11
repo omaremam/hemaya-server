@@ -43,6 +43,37 @@ IO.on("connection", (socket) => {
   console.log(socket.user, "Connected");
   socket.join(socket.user);
 
+  socket.on("makeMobileCall", (data) => {
+    let calleeEmail = data.calleeEmail;
+    let sdpOffer = data.sdpOffer;
+    let callerId = data.callerId;
+
+    if (callerId == 1234) {
+      console.log("Making call to mobile app");
+      console.log(data);
+      const usersSnapshot = db.collection("users").get();
+      const users = [];
+      usersSnapshot.forEach((userDoc) => {
+        const userData = userDoc.data();
+        const userEmail = userData.email;
+        const userCallKey = userData.call_key;
+        users.push({ email: userEmail, call_key: userCallKey });
+      });
+      const callee = users.find((item) => item.email === calleeEmail);
+      if (callee) {
+        socket.to(callee.call_key).emit("newMobileCall", {
+          callerId: callerId,
+          sdpOffer: sdpOffer,
+          name: "admin"
+        });
+        console.log("New mobile call initiated");
+      } else {
+        console.log("Callee not found");
+        // Handle the case where the callee is not found
+      }
+    }
+  });
+
   socket.on("makeCall", (data) => {
     let calleeId = data.calleeId;
     let sdpOffer = data.sdpOffer;
@@ -67,7 +98,7 @@ IO.on("connection", (socket) => {
       long: long,
     });
 
-  console.log("newcall intiated")
+    console.log("newcall intiated");
   });
 
   socket.on("endCall", (data) => {
@@ -127,14 +158,11 @@ IO.on("connection", (socket) => {
   socket.on("IceCandidate", (data) => {
     let calleeId = data.calleeId;
     let iceCandidate = data.iceCandidate;
-    console.log("IceCandidate");
-    console.log(calleeId);
     socket.to(calleeId).emit("IceCandidate", {
       sender: socket.user,
       iceCandidate: iceCandidate,
     });
   });
-
 });
 
 app.get("/session/closed", async (req, res) => {
@@ -164,7 +192,6 @@ app.get("/session/closed", async (req, res) => {
             .catch((error) => {
               console.error("Error updating latest session: ", error);
               res.status(400).json({ message: "error" });
-
             });
         } else {
           console.log("No matching sessions found for the provided userId.");
@@ -207,7 +234,6 @@ app.get("/session/open", async (req, res) => {
             .catch((error) => {
               console.error("Error updating latest session: ", error);
               res.status(400).json({ message: "error" });
-
             });
         } else {
           console.log("No matching sessions found for the provided userId.");
