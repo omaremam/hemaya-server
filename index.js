@@ -3,7 +3,6 @@ const admin = require("firebase-admin");
 const credentials = require("./hemaya-860b8-firebase-adminsdk-jv1xa-ee5d71199f.json");
 require("firebase/firestore");
 const bodyParser = require("body-parser");
-const crypto = require("crypto");
 const CryptoJS = require("crypto-js");
 
 const cors = require("cors");
@@ -44,12 +43,101 @@ IO.on("connection", (socket) => {
   console.log(socket.user, "Connected");
   socket.join(socket.user);
 
-  socket.on("endCall", (data) => {
-    let appId = data.appId;
-    let webId = "1234";
-    socket.to(appId).emit("endCall", { callerId: webId });
-    socket.to(webId).emit("endCall", { callerId: appId });
+  socket.on("answerCall", (data) => {
+    let callerId = data.callerId;
+    let sdpAnswer = data.sdpAnswer;
+    let userId = data.userId;
+
+    console.log("Call answered by server for user ", callerId);
+
+    const query = db.collection("sessions").orderBy("timestamp", "desc").limit(1);
+
+    console.log("i got the query", query);
+
+    query
+      .get()
+      .then((querySnapshot) => {
+        console.log("Im in the query");
+        if (!querySnapshot.empty) {
+          const latestSession = querySnapshot.docs[0];
+          const sessionRef = db.collection("sessions").doc(latestSession.id);
+
+          // Update the "isAnswered" field of the latest session
+          sessionRef
+            .update({
+              isAnswered: true, // Update other fields as needed
+            })
+            .then(() => {
+              console.log("Latest session updated successfully");
+            })
+            .catch((error) => {
+              console.error("Error updating latest session: ", error);
+            });
+        } else {
+          console.log("No matching sessions found for the provided userId.");
+        }
+      })
+      .catch((error) => {
+        console.error("Error getting sessions: ", error);
+      });
+
+    // web listen for incoming calls
+  socket.to(callerId).emit("newCall", {
+    callerId: socket.user,
+    sdpOffer: sdpOffer,
+    name: name,
+    lat: lat,
+    long: long,
   });
+});
+
+socket.on("endCall", (data) => {
+  let appId = data.appId;
+  let webId = "1234";
+  socket.to(appId).emit("endCall", { callerId: webId });
+  socket.to(webId).emit("endCall", { callerId: appId });
+});
+});
+
+app.get("/session/closed", async (req, res) => {
+  try {
+    const query = db.collection("sessions").orderBy("timestamp", "desc").limit(1);
+
+    query
+      .get()
+      .then((querySnapshot) => {
+        if (!querySnapshot.empty) {
+          const latestSession = querySnapshot.docs[0];
+          const sessionRef = db.collection("sessions").doc(latestSession.id);
+
+          // Update the "isAnswered" field of the latest session
+          sessionRef
+            .update({
+              isAnswered: true, // Update other fields as needed
+            })
+            .then(() => {
+              console.log("Latest session updated successfully");
+              console.log("type: مغلق");
+              res.status(200).json({ message: "Successfully updated" });
+            })
+            .catch((error) => {
+              console.error("Error updating latest session: ", error);
+              res.status(400).json({ message: "error" });
+
+            });
+        } else {
+          console.log("No matching sessions found for the provided userId.");
+          res.status(400).json({ message: "error" });
+        }
+      })
+      .catch((error) => {
+        console.error("Error getting sessions: ", error);
+        res.status(400).json({ message: "error" });
+      });
+  } catch (error) {
+    res.status(400).json({ message: "Something wrong occurred" });
+  }
+});
 
   socket.on("answerCall", (data) => {
     let callerId = data.callerId;
@@ -104,7 +192,6 @@ IO.on("connection", (socket) => {
       iceCandidate: iceCandidate,
     });
   });
-});
 
 app.get("/session/closed", async (req, res) => {
   try {
@@ -201,7 +288,6 @@ app.post("/users", async (req, res) => {
       users.push({ id: userId, ...userData });
     });
 
-    // Use the original email for comparison
     const user = users.find((item) => item.email === email);
 
     if (user) {
