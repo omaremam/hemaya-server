@@ -3,7 +3,7 @@ const admin = require("firebase-admin");
 const credentials = require("./hemaya-860b8-firebase-adminsdk-jv1xa-ee5d71199f.json");
 require("firebase/firestore");
 const bodyParser = require("body-parser");
-const CryptoJS = require("crypto-js");
+const crypto = require("crypto-js");
 
 const cors = require("cors");
 
@@ -252,10 +252,10 @@ app.get("/session/open", async (req, res) => {
 // CRUD operations for the "users" collection
 app.post("/users", async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password,name } = req.body;
 
-    // Hash the user email using CryptoJS
-    const hashedEmail = CryptoJS.SHA256(email).toString();
+    // Hash the user email using crypto
+    const hashedEmail = crypto.SHA256(email).toString();
 
     const usersSnapshot = await db.collection("users").get();
 
@@ -274,6 +274,7 @@ app.post("/users", async (req, res) => {
       // Store the unhashed email and hashed email as call_key in Firebase
       const newUserRef = await db.collection("users").add({
         email: email,
+        name: name,
         password: password,
         call_key: hashedEmail,
       });
