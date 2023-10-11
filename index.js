@@ -42,7 +42,7 @@ IO.use((socket, next) => {
 IO.on("connection", (socket) => {
   console.log(socket.user, "Connected");
   socket.join(socket.user);
-  
+
   socket.on("makeCall", (data) => {
     let calleeId = data.calleeId;
     let sdpOffer = data.sdpOffer;
@@ -72,8 +72,6 @@ IO.on("connection", (socket) => {
     socket.to(appId).emit("endCall", { callerId: webId });
     socket.to(webId).emit("endCall", { callerId: appId });
   });
-
-
 
   socket.on("answerCall", (data) => {
     let callerId = data.callerId;
