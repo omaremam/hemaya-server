@@ -51,6 +51,8 @@ IO.on("connection", (socket) => {
     let long = data.long;
     let userId = data.userId;
 
+    console.log("making call to web app");
+    console.log(data);
     db.collection("sessions").add({
       userId: userId,
       isAnswered: false,
@@ -64,6 +66,8 @@ IO.on("connection", (socket) => {
       lat: lat,
       long: long,
     });
+
+  console.log("newcall intiated")
   });
 
   socket.on("endCall", (data) => {
@@ -123,7 +127,8 @@ IO.on("connection", (socket) => {
   socket.on("IceCandidate", (data) => {
     let calleeId = data.calleeId;
     let iceCandidate = data.iceCandidate;
-
+    console.log("IceCandidate");
+    console.log(calleeId);
     socket.to(calleeId).emit("IceCandidate", {
       sender: socket.user,
       iceCandidate: iceCandidate,
