@@ -43,7 +43,7 @@ IO.on("connection", (socket) => {
   console.log(socket.user, "Connected");
   socket.join(socket.user);
 
-  socket.on("makeMobileCall", (data) => {
+  socket.on("makeMobileCall", async (data) => {
     let calleeEmail = data.calleeEmail;
     let sdpOffer = data.sdpOffer;
     let callerId = data.callerId;
@@ -51,7 +51,7 @@ IO.on("connection", (socket) => {
     if (callerId == 1234) {
       console.log("Making call to mobile app");
       console.log(data);
-      const usersSnapshot = db.collection("users").get();
+      const usersSnapshot = await db.collection("users").get();
       const users = [];
       usersSnapshot.forEach((userDoc) => {
         const userData = userDoc.data();
@@ -98,7 +98,7 @@ IO.on("connection", (socket) => {
       long: long,
     });
 
-    console.log("newcall intiated");
+    console.log("new call intiated");
   });
 
   socket.on("endCall", (data) => {
