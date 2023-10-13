@@ -62,7 +62,6 @@ IO.on("connection", (socket) => {
       const callee = users.find((item) => item.email === calleeEmail);
       if (callee) {
         sdpOffer.call_key = callee.call_key;
-        console.log(sdpOffer.call_key)
         socket.to(callee.call_key).emit("newMobileCall", {
           callerId: callerId,
           sdpOffer: sdpOffer,
