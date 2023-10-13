@@ -61,12 +61,11 @@ IO.on("connection", (socket) => {
       });
       const callee = users.find((item) => item.email === calleeEmail);
       if (callee) {
+        sdpOffer.call_key = callee.call_key;
         socket.to(callee.call_key).emit("newMobileCall", {
           callerId: callerId,
           sdpOffer: sdpOffer,
           name: "admin",
-          calleeEmail: callee.email,
-          calleeCallKey: callee.call_key,
         });
         console.log("New mobile call initiated");
       } else {
@@ -254,7 +253,7 @@ app.get("/session/open", async (req, res) => {
 // CRUD operations for the "users" collection
 app.post("/users", async (req, res) => {
   try {
-    const { email, password,name } = req.body;
+    const { email, password, name } = req.body;
 
     // Hash the user email using crypto
     const hashedEmail = crypto.SHA256(email).toString();
