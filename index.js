@@ -64,7 +64,9 @@ IO.on("connection", (socket) => {
         socket.to(callee.call_key).emit("newMobileCall", {
           callerId: callerId,
           sdpOffer: sdpOffer,
-          name: "admin"
+          name: "admin",
+          calleeEmail: callee.email,
+          calleeCallKey: callee.call_key,
         });
         console.log("New mobile call initiated");
       } else {
