@@ -151,15 +151,19 @@ IO.on("connection", (socket) => {
       .catch((error) => {
         console.error("Error getting sessions: ", error);
       });
-
-    // socket.to(callerId).emit("callAnswered", {
-    //   callee: socket.user,
-    //   sdpAnswer: sdpAnswer,
-    // });
-    socket.to(userId).emit("callAnswered", {
-      callee: socket.user,
-      sdpAnswer: sdpAnswer,
-    });
+    
+      if(callerId != 1234){
+        socket.to(callerId).emit("callAnswered", {
+          callee: socket.user,
+          sdpAnswer: sdpAnswer,
+        });
+      }else{
+        socket.to(userId).emit("callAnswered", {
+          callee: socket.user,
+          sdpAnswer: sdpAnswer,
+        });
+      }
+    
   });
 
   socket.on("IceCandidate", (data) => {
