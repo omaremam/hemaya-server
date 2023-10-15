@@ -116,7 +116,7 @@ IO.on("connection", (socket) => {
     let sdpAnswer = data.sdpAnswer;
     let userId = data.calleeId;
 
-    console.log("Call answered by server for user ", callerId);
+    console.log("Call answered by server for user ", userId);
 
     const query = db
       .collection("sessions")
@@ -151,8 +151,10 @@ IO.on("connection", (socket) => {
       .catch((error) => {
         console.error("Error getting sessions: ", error);
       });
-    
+      console.log('USER::::::::::::::::::::::::::::')
+      console.log(socket.user);
       if(callerId != 1234){
+        
         socket.to(callerId).emit("callAnswered", {
           callee: socket.user,
           sdpAnswer: sdpAnswer,
