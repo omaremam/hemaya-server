@@ -160,7 +160,7 @@ IO.on("connection", (socket) => {
           sdpAnswer: sdpAnswer,
         });
       }else{
-        socket.to(socket.user).emit("callAnswered", {
+        socket.to(1234).emit("callAnswered", {
           callee: socket.user,
           sdpAnswer: sdpAnswer,
         });
