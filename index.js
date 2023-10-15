@@ -115,8 +115,9 @@ IO.on("connection", (socket) => {
     let callerId = data.callerId;
     let sdpAnswer = data.sdpAnswer;
     let userId = data.calleeId;
+    console.log("Call being answered");
+    console.log(data)
 
-    console.log("Call answered by server for user ", userId);
 
     const query = db
       .collection("sessions")
@@ -154,12 +155,13 @@ IO.on("connection", (socket) => {
       console.log('USER::::::::::::::::::::::::::::')
       console.log(socket.user);
       if(callerId != 1234){
-        
+        console.log("mobile to web")
         socket.to(callerId).emit("callAnswered", {
           callee: socket.user,
           sdpAnswer: sdpAnswer,
         });
       }else{
+        console.log("web to mobile")
         socket.to(1234).emit("callAnswered", {
           callee: socket.user,
           sdpAnswer: sdpAnswer,
