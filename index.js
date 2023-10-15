@@ -48,6 +48,8 @@ IO.on("connection", (socket) => {
     let sdpOffer = data.sdpOffer;
     let callerId = data.callerId;
 
+
+    console.log("IM IN MAKE MOBILE CALL ", callerId);
     if (callerId == 1234) {
       console.log("Making call to mobile app");
       console.log(data);
@@ -150,10 +152,10 @@ IO.on("connection", (socket) => {
         console.error("Error getting sessions: ", error);
       });
 
-    socket.to(callerId).emit("callAnswered", {
-      callee: socket.user,
-      sdpAnswer: sdpAnswer,
-    });
+    // socket.to(callerId).emit("callAnswered", {
+    //   callee: socket.user,
+    //   sdpAnswer: sdpAnswer,
+    // });
     socket.to(userId).emit("callAnswered", {
       callee: socket.user,
       sdpAnswer: sdpAnswer,
