@@ -162,7 +162,7 @@ IO.on("connection", (socket) => {
         });
       }else{
         console.log("web to mobile")
-        socket.to(1234).emit("callAnswered", {
+        socket.to(callerId).emit("callAnswered", {
           callee: socket.user,
           sdpAnswer: sdpAnswer,
         });
