@@ -112,7 +112,7 @@ IO.on("connection", (socket) => {
   socket.on("answerCall", (data) => {
     let callerId = data.callerId;
     let sdpAnswer = data.sdpAnswer;
-    let userId = data.userId;
+    let userId = data.calleeId;
 
     console.log("Call answered by server for user ", callerId);
 
@@ -151,6 +151,10 @@ IO.on("connection", (socket) => {
       });
 
     socket.to(callerId).emit("callAnswered", {
+      callee: socket.user,
+      sdpAnswer: sdpAnswer,
+    });
+    socket.to(userId).emit("callAnswered", {
       callee: socket.user,
       sdpAnswer: sdpAnswer,
     });
