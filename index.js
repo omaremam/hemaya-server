@@ -107,8 +107,12 @@ IO.on("connection", (socket) => {
   socket.on("endCall", (data) => {
     let appId = data.appId;
     let webId = "1234";
-    socket.to(appId).emit("endCall", { callerId: webId });
-    socket.to(webId).emit("endCall", { callerId: appId });
+    let leaverId = data.callerId;
+    if(leaverId == webId){
+      socket.to(appId).emit("endCall", { callerId: webId });
+    }else{
+      socket.to(webId).emit("endCall", { callerId: appId });
+    }
   });
 
   socket.on("answerCall", (data) => {
