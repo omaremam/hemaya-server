@@ -108,6 +108,10 @@ IO.on("connection", (socket) => {
     let appId = data.appId;
     let webId = "1234";
     let leaverId = data.callerId;
+    console.log('*' *50);
+    console.log("ending call:");
+    console.log(data.callerId);
+    console.log(data.appId);
     if(leaverId == webId){
       socket.to(appId).emit("endCall", { callerId: webId });
     }else{
